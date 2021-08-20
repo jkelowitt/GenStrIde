@@ -2,9 +2,10 @@
 
 import numpy as np
 import tensorflow as tf
-from sklearn import preprocessing
-import sys, argparse
-import os
+from tensorflow.compat.v1 import ConfigProto
+
+config = ConfigProto()
+config.gpu_options.allow_growth = True
 
 from utils import tf_util
 
@@ -143,7 +144,7 @@ class PointNet:
         init = tf.global_variables_initializer()
 
         # Launch the graph
-        sess = tf.Session()
+        sess = tf.Session(config=config)
         sess.run(init)
 
         if self.load:
@@ -228,7 +229,7 @@ class PointNet:
 
         # Load from weights file
         saver = tf.train.Saver()
-        sess = tf.Session()
+        sess = tf.Session(config=config)
         saver.restore(sess, self.weights_file)
 
         accs = []
@@ -277,7 +278,7 @@ class PointNet:
 
         # Load from weights file
         saver = tf.train.Saver()
-        sess = tf.Session()
+        sess = tf.Session(config=config)
         saver.restore(sess, self.weights_file)
 
         results = []
