@@ -13,7 +13,8 @@ import MDAnalysis as mda
 # For Cython nlist
 # PROVIDE AN ABSOLUTE PATH TO MAKE THIS IMPORT WORK
 # FROM WHEREVER YOU ARE EXECUTING THIS CODE
-sys.path.append('/home/rdefeve/repos/stride-upload/mda_custom')
+
+sys.path.append('$HOME/GenStrIde/mda_custom')
 import nsgrid.nsgrid_rsd as nsgrid
 
 def main():
