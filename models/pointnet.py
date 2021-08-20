@@ -1,4 +1,6 @@
-#/usr/bin/python
+# /usr/bin/python
+
+import os
 
 import numpy as np
 import tensorflow as tf
@@ -9,11 +11,12 @@ config.gpu_options.allow_growth = True
 
 from utils import tf_util
 
+
 class PointNet:
-    def __init__(self, lr=0.001, epochs=75, \
-        batch_size=16, disp_step=1, n_points=25, n_input=3, \
-        n_classes=4, dropout=0, load=0, save=0, verbose=0, \
-        weights_dir='/scratch3/ctargon/weights/r2.0/r2'):
+    def __init__(self, lr=0.001, epochs=75,
+                 batch_size=16, disp_step=1, n_points=25, n_input=3,
+                 n_classes=4, dropout=0, load=0, save=0, verbose=0,
+                 weights_dir='/scratch3/ctargon/weights/r2.0/r2'):
 
         self.lr = lr
         self.epochs = epochs
@@ -39,31 +42,31 @@ class PointNet:
         input_image = tf.expand_dims(point_cloud, -1)
 
         # Point functions (MLP implemented as conv2d)
-        net = tf_util.conv2d(input_image, 64, [1,3],
-                             padding='VALID', stride=[1,1],
+        net = tf_util.conv2d(input_image, 64, [1, 3],
+                             padding='VALID', stride=[1, 1],
                              bn=bn, is_training=is_training,
                              scope='conv1', bn_decay=bn_decay)
-        net = tf_util.conv2d(net, 64, [1,1],
-                             padding='VALID', stride=[1,1],
+        net = tf_util.conv2d(net, 64, [1, 1],
+                             padding='VALID', stride=[1, 1],
                              bn=bn, is_training=is_training,
                              scope='conv2', bn_decay=bn_decay)
-        net = tf_util.conv2d(net, 64, [1,1],
-                             padding='VALID', stride=[1,1],
+        net = tf_util.conv2d(net, 64, [1, 1],
+                             padding='VALID', stride=[1, 1],
                              bn=bn, is_training=is_training,
                              scope='conv3', bn_decay=bn_decay)
-        net = tf_util.conv2d(net, 128, [1,1],
-                             padding='VALID', stride=[1,1],
+        net = tf_util.conv2d(net, 128, [1, 1],
+                             padding='VALID', stride=[1, 1],
                              bn=bn, is_training=is_training,
                              scope='conv4', bn_decay=bn_decay)
-        net = tf_util.conv2d(net, 1024, [1,1],
-                             padding='VALID', stride=[1,1],
+        net = tf_util.conv2d(net, 1024, [1, 1],
+                             padding='VALID', stride=[1, 1],
                              bn=bn, is_training=is_training,
                              scope='conv5', bn_decay=bn_decay)
 
         # Symmetric function: max pooling
-        net = tf_util.max_pool2d(net, [num_point,1],
+        net = tf_util.max_pool2d(net, [num_point, 1],
                                  padding='VALID', scope='maxpool')
-        
+
         # MLP on global point cloud vector
         net = tf.layers.flatten(net)
         net = tf_util.fully_connected(net, 512, bn=bn, is_training=is_training,
@@ -76,7 +79,6 @@ class PointNet:
 
         return net
 
-
     # Get the loss from predictions vs labels
     def get_loss(self, pred, label):
         """ pred: B*NUM_CLASSES,
@@ -85,7 +87,6 @@ class PointNet:
         classify_loss = tf.reduce_mean(loss)
         tf.summary.scalar('classify loss', classify_loss)
         return classify_loss
-
 
     # Function modified from https://github.com/charlesq34/pointnet/blob/master/provider.py
     def rotate_point_cloud(self, batch_data):
@@ -116,10 +117,10 @@ class PointNet:
 
             # Overall rotation calculated from x,y,z -->
             # order matters bc matmult not commutative 
-            overall_rot = np.dot(z_rot_mat,np.dot(y_rot_mat,x_rot_mat))
+            overall_rot = np.dot(z_rot_mat, np.dot(y_rot_mat, x_rot_mat))
             # Transposes bc overall_rot operates on col. vec [[x,y,z]]
-            rotated_pc = np.dot(overall_rot,batch_data[k,:,:3].T).T
-            rotated_data[k] = np.concatenate((rotated_pc, batch_data[k,:,3:]), axis=1)
+            rotated_pc = np.dot(overall_rot, batch_data[k, :, :3].T).T
+            rotated_data[k] = np.concatenate((rotated_pc, batch_data[k, :, 3:]), axis=1)
 
         return rotated_data
 
@@ -129,7 +130,7 @@ class PointNet:
 
         pc_pl = tf.placeholder(tf.float32, [None, self.n_points, self.n_input])
         y_pl = tf.placeholder(tf.float32, [None, self.n_classes])
-        is_training_pl = tf.placeholder(tf.bool, shape=())  
+        is_training_pl = tf.placeholder(tf.bool, shape=())
 
         # Construct model
         pred = self.pointnet(pc_pl, is_training_pl)
@@ -137,7 +138,7 @@ class PointNet:
         loss = self.get_loss(pred, y_pl)
 
         optimizer = tf.train.AdamOptimizer(learning_rate=self.lr).minimize(loss)
-        
+
         saver = tf.train.Saver()
 
         # Initializing the variables
@@ -150,21 +151,21 @@ class PointNet:
         if self.load:
             saver.restore(sess, '/tmp/cnn')
 
-        total_batch = int(dataset.train.num_examples/self.batch_size)
+        total_batch = int(dataset.train.num_examples / self.batch_size)
 
         is_training = True
 
         # Training cycle
         for epoch in range(self.epochs):
             avg_cost = 0.
-            
+
             dataset.shuffle()
-            
+
             # Loop over all batches
             for i in range(total_batch):
                 batch_x, batch_y = dataset.train.next_batch(self.batch_size, i)
                 batch_x = self.rotate_point_cloud(batch_x)
-                _, c = sess.run([optimizer, loss], feed_dict={pc_pl: batch_x, 
+                _, c = sess.run([optimizer, loss], feed_dict={pc_pl: batch_x,
                                                               y_pl: batch_y,
                                                               is_training_pl: is_training})
 
@@ -172,9 +173,9 @@ class PointNet:
                 avg_cost += c / total_batch
 
             if self.verbose:
-                print("Epoch:", '%04d' % (epoch+1), "cost=", "{:.9f}".format(avg_cost))
+                print("Epoch:", '%04d' % (epoch + 1), "cost=", "{:.9f}".format(avg_cost))
 
-            if (epoch+1) % 10 == 0 and self.save:
+            if (epoch + 1) % 10 == 0 and self.save:
                 saver.save(sess, self.weights_file)
 
         if self.save:
@@ -193,13 +194,13 @@ class PointNet:
         total_test_batch = int(dataset.test.num_examples / self.batch_size)
         for i in range(total_test_batch):
             batch_x, batch_y = dataset.test.next_batch(self.batch_size, i)
-            #batch_x = self.rotate_point_cloud(batch_x)
-            acc, p = sess.run([accuracy, pred], feed_dict={pc_pl: batch_x, 
-                                       y_pl: batch_y,
-                                       is_training_pl: is_training}) 
+            # batch_x = self.rotate_point_cloud(batch_x)
+            acc, p = sess.run([accuracy, pred], feed_dict={pc_pl: batch_x,
+                                                           y_pl: batch_y,
+                                                           is_training_pl: is_training})
             accs.append(acc)
             cm_preds.append(p)
-            cm_labels.append(batch_y)           
+            cm_labels.append(batch_y)
 
         if conf_matrix:
             cm_preds = np.vstack(cm_preds)
@@ -240,8 +241,8 @@ class PointNet:
         for i in range(total_test_batch):
             batch_x, batch_y = dataset.test.next_batch(self.batch_size, i)
             acc, p = sess.run([accuracy, pred], feed_dict={pc_pl: batch_x,
-                                                y_pl: batch_y,
-                                                is_training_pl: is_training})
+                                                           y_pl: batch_y,
+                                                           is_training_pl: is_training})
             accs.append(acc)
             cm_preds.append(p)
             cm_labels.append(batch_y)
@@ -274,7 +275,7 @@ class PointNet:
 
         # Construct model
         pred = self.pointnet(pc_pl, is_training_pl)
-        pred_ndx = tf.argmax(pred,1)
+        pred_ndx = tf.argmax(pred, 1)
 
         # Load from weights file
         saver = tf.train.Saver()
@@ -285,22 +286,21 @@ class PointNet:
         is_training = False
         total_test_batch = int(dataset.shape[0] / self.batch_size)
 
-        for i in range(total_test_batch+1):
-            batch_x = self.next_test_batch(dataset,self.batch_size,i)
+        for i in range(total_test_batch + 1):
+            batch_x = self.next_test_batch(dataset, self.batch_size, i)
             if batch_x is not None:
                 results.extend(pred_ndx.eval({pc_pl: batch_x,
-                                       is_training_pl: is_training},
-                                       session=sess))
+                                              is_training_pl: is_training},
+                                             session=sess))
         sess.close()
         return results
 
-    def next_test_batch(self,dataset, batch_size, index):
+    def next_test_batch(self, dataset, batch_size, index):
         idx = index * batch_size
         n_idx = index * batch_size + batch_size
         if n_idx < dataset.shape[0]:
             return dataset[idx:n_idx, :]
         elif idx < dataset.shape[0]:
-            return dataset[idx: , :]
+            return dataset[idx:, :]
         else:
             return None
-
