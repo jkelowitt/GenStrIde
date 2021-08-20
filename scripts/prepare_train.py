@@ -15,7 +15,7 @@ import numpy as np
 # PROVIDE AN ABSOLUTE PATH TO MAKE THIS IMPORT WORK
 # FROM WHEREVER YOU ARE EXECUTING THIS CODE
 
-sys.path.append('$HOME/GenStrIde/mda_custom')
+sys.path.append('../mda_custom')
 import nsgrid.nsgrid_rsd as nsgrid
 
 
